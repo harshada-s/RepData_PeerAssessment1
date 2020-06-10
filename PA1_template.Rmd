@@ -5,21 +5,135 @@ output:
     keep_md: true
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
 
 ## Loading and preprocessing the data
 
+```{r}
+setwd("C:/Users/Harshada Sasturkar/Desktop/RepData_PeerAssessment1")
+activity<-read.csv("./activity/activity.csv")
+```
+
+The interval column in activity data frame represents time as integer. To distinguish between hours and minutes I created a new column activity$hh.mm where interval is stored in 'hh.mm' format. Also dates are converted into 'Date' format.
+
+```{r}
+activity$hh.mm<-activity$interval/100
+activity$date<-as.Date(activity$date)
+str(activity)
+```
 
 
 ## What is mean total number of steps taken per day?
 
+### 1. Total number of steps taken per day:
+ Observations in which no measurements of steps were taken are excluded
 
+```{r}
+step<-subset(activity,!is.na(activity$steps))
+tsteps<-tapply(step$steps,step$date,sum)
+tsteps
+```
+
+### 2. Histogram of the total number of steps taken each day:
+
+```{r}
+ hist(tsteps,xlab="total number of steps",ylab="number of days",main="Histogram of total number of steps taken each day",col="orange")
+```
+
+### 3. Mean and median of the total number of steps taken per day:
+
+```{r}
+mean(tsteps)
+median(tsteps)
+```
 
 ## What is the average daily activity pattern?
+### 1. Time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+Average number of steps grouped by time interval, averaged across all days:
 
+```{r}
+intsteps<-tapply(activity$steps,activity$hh.mm,mean,na.rm=TRUE)
+```
+
+Time series plot:
+
+```{r}
+plot(names(intsteps),intsteps,type="l",xlab="time interval (hours)",ylab="number of steps",main="Time series plot")
+```
+
+### 2. The 5-minute interval, on average across all the days in the dataset, containing the maximum number of steps:
+
+```{r}
+which.max(intsteps)
+```
+
+i.e. 8 hr 35 min is that time interval (at index 104)
 
 ## Imputing missing values
 
+### 1. Total number of missing values in the dataset:
 
+```{r}
+ sum(is.na(activity))
+```
+
+### 2. filling in all of the missing values in the dataset:
+
+I've used median values of steps for each time interval.
+
+```{r}
+medianint<-tapply(step$steps,step$interval,median)
+medianint
+```
+
+(step is the data frame without missing value rows) 
+
+### 3. A new dataset that is equal to the original dataset but with the missing data filled in:
+
+```{r}
+activity1<-activity
+while(sum(is.na(activity1))!=0)
+{activity1$steps[which(is.na(activity1))]<-medianint[which(activity1$interval[which(is.na(activity1))]==names(medianint))]}
+```
+
+The intervals of missing value rows in new data set (activity1) are matched with the intervals(names) of medianint and the values are filled accordingly.
+
+### 4. Histogram of the total number of steps taken each day:
+
+```{r}
+tsteps1<-tapply(activity1$steps,activity1$date,sum)
+hist(tsteps1,xlab="total number of steps",ylab="number of days",main="Histogram of total number of steps taken each day",col="pink")
+```
+
+### 5. Mean and median total number of steps taken per day:
+
+```{r}
+mean(tsteps1)
+median(tsteps1)
+```
+
+These values differ from the previous ones (mean=10766.19,median=10765). From the histogram it is seen that imputing missing values lead to rise in number of days having total number of steps between 0-5000. Also the mean and median are affected by increased number of observations which weren't previously considered. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### 1. Creating new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day:
+
+```{r}
+activity1$wdays <- factor(ifelse(weekdays(activity1$date)=="Saturday"|weekdays(activity1$date)=="Sunday", "weekend", "weekday"))
+```
+
+### 2. A panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis):
+
+```{r}
+awday<-subset(activity1,activity1$wdays=="weekday")
+awend<-subset(activity1,activity1$wdays=="weekend")
+intsteps1<-tapply(awday$steps,awday$hh.mm,mean)
+intsteps2<-tapply(awend$steps,awend$hh.mm,mean)
+par(mfrow=c(1,2))
+plot(names(intsteps1),intsteps1,type="l",xlab="time interval (hours)",ylab= "number of steps", main="Weekday")
+plot(names(intsteps2),intsteps2,type="l",xlab="time interval (hours)",ylab= "number of steps", main="Weekend")
+```
